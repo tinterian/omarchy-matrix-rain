@@ -1,0 +1,127 @@
+#!/bin/bash
+# ============================================================================
+# FILE:    matrix-wallpaper
+# TASK:    Launch/manage the Matrix theme's animated wallpaper
+# STATUS:  DONE
+# OWNER:   agent (Claude Code) 2026-08-31 (session 5)
+#
+# WHAT THIS FILE DOES:
+#   Runs only while the Matrix theme is active (checked once at start, same
+#   as before). Plays one of the three digital-rain text-size variants
+#   (1-digital-rain-small.mp4 / 2-...-medium.mp4 / 3-...-large.mp4, in
+#   ~/.config/omarchy/themes/matrix/backgrounds/) with mpvpaper, chosen by
+#   reading the SAME "current background" symlink every other Omarchy theme
+#   uses (~/.local/state/omarchy/current/background) -- so the standard
+#   picture-flipping UI (omarchy-theme-bg-next / omarchy-theme-bg-switcher)
+#   works for Matrix exactly like it does for any image-based theme, even
+#   though mpvpaper itself only plays video files. Each variant has a
+#   matching poster .png (same basename) purely so the picker -- which only
+#   recognizes static image formats -- can list/thumbnail/select it; this
+#   script maps whichever poster got selected back to its video companion.
+#   Since mpvpaper's `-l bottom` layer paints a full opaque frame every
+#   frame, it fully occludes the still poster the standard background
+#   layer (WlrLayer.Background, one layer further back) would otherwise be
+#   showing underneath -- confirmed by reading Background.qml before
+#   relying on this, not guessed.
+#
+#   Previously this just did `exec mpvpaper ... digital-rain.mp4` (single
+#   hardcoded file, no variant concept). Rewritten this session to add
+#   variant selection + live hot-swapping: watches the background symlink
+#   with inotifywait and restarts mpvpaper on the newly-selected file
+#   whenever the user flips to a different variant, without needing the
+#   whole service restarted.
+#
+# NEXT STEP (if not DONE):
+#   none -- file complete, tested by cycling through all 3 variants via
+#   `omarchy-theme-bg-next` and confirming mpvpaper's argv changed each
+#   time (see PROGRESS.md for the exact verification done).
+#
+# IF YOU ADD A 4TH VARIANT (or change these) LATER:
+#   Generate it with matrix_rain.py (see that file's own "IF YOU CHANGE
+#   SOMETHING LATER" section for the font-size/loop_frames gotchas), then
+#   drop the .mp4 into $BACKGROUNDS_DIR below with a "N-digital-rain-
+#   <name>.mp4" filename (the leading "N-" controls cycle order --
+#   omarchy-theme-bg-next sorts alphabetically, and omarchy-theme-bg-
+#   current strips a leading "\d+-" for the display name) and extract a
+#   same-basename "N-digital-rain-<name>.png" poster frame (any frame is
+#   fine, they're all steady-state now -- `ffmpeg -i in.mp4 -vf
+#   "select=eq(n\,0)" -vframes 1 out.png`). Nothing else needs to change --
+#   resolve_video() below derives the poster/video pairing purely from
+#   matching basenames, it doesn't hardcode the list of variants.
+# ============================================================================
+
+theme_name=$(cat "$HOME/.local/state/omarchy/current/theme.name" 2>/dev/null)
+if [[ $theme_name != "matrix" ]]; then
+  exit 0
+fi
+
+# The standard background picker (omarchy-theme-bg-next / bg-switcher)
+# selects from the STATE snapshot dir, not the source theme dir directly --
+# omarchy-theme-set/-refresh `cp -r`s ~/.config/omarchy/themes/matrix/* (or
+# the system theme dir) into this state path, and $CURRENT_LINK always
+# resolves under it. Play from here too, not the source config dir, or the
+# "is this inside our backgrounds dir" safety check below always rejects
+# the picker's actual selection and silently falls back to the default.
+# NOTE: this also means editing files in the source theme dir (e.g. adding
+# a new variant) needs `omarchy-theme-refresh` before bg-next/switcher (or
+# this script) will see it -- see matrix_rain.py's header for details.
+BACKGROUNDS_DIR="$HOME/.local/state/omarchy/current/theme/backgrounds"
+CURRENT_LINK="$HOME/.local/state/omarchy/current/background"
+LINK_DIR=$(dirname "$CURRENT_LINK")
+LINK_NAME=$(basename "$CURRENT_LINK")
+DEFAULT_VIDEO="$BACKGROUNDS_DIR/2-digital-rain-medium.mp4"
+
+# Map whatever poster image the standard background picker selected back to
+# its same-basename video file. Falls back to the medium variant if the
+# symlink is missing/dangling, or points somewhere outside our own
+# backgrounds dir (e.g. a stale/foreign selection) -- never plays an
+# arbitrary file.
+resolve_video() {
+  local target video
+  target=$(readlink -f "$CURRENT_LINK" 2>/dev/null)
+  if [[ -n $target ]]; then
+    video="${target%.*}.mp4"
+    if [[ -f $video && $video == "$BACKGROUNDS_DIR"/* ]]; then
+      echo "$video"
+      return
+    fi
+  fi
+  echo "$DEFAULT_VIDEO"
+}
+
+MPV_PID=""
+
+start_mpv() {
+  /usr/bin/mpvpaper -l bottom \
+    -o "no-audio loop-file=inf really-quiet video-sync=display scale=nearest dscale=nearest sws-scaler=nearest" \
+    ALL "$1" &
+  MPV_PID=$!
+}
+
+stop_mpv() {
+  if [[ -n $MPV_PID ]] && kill -0 "$MPV_PID" 2>/dev/null; then
+    kill "$MPV_PID" 2>/dev/null
+    wait "$MPV_PID" 2>/dev/null
+  fi
+}
+
+trap 'stop_mpv; exit 0' TERM INT
+
+current_video=$(resolve_video)
+start_mpv "$current_video"
+
+# omarchy-theme-bg-set re-points $CURRENT_LINK with `ln -nsf` (create a new
+# symlink, rename over the old one) -- from the containing directory's
+# side that's a moved_to/create event on $LINK_NAME, which is what we
+# watch for rather than watching the symlink path itself (a symlink being
+# replaced out from under an inotify watch on the link itself just reads
+# as a delete, not something you can keep watching across).
+while IFS= read -r changed_name; do
+  [[ $changed_name == "$LINK_NAME" ]] || continue
+  new_video=$(resolve_video)
+  if [[ $new_video != "$current_video" ]]; then
+    current_video="$new_video"
+    stop_mpv
+    start_mpv "$current_video"
+  fi
+done < <(inotifywait -m -q -e moved_to,create --format '%f' "$LINK_DIR" 2>/dev/null)
