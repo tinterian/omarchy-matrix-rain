@@ -9,6 +9,12 @@
 # cropped the wallpaper poster (no icons/code/system-monitor colors visible,
 # didn't actually show what the theme looks like in use).
 #
+# NOT called by install.sh. theme/preview.png is a fixed, curated asset
+# shipped in the repo (same as every stock Omarchy theme's preview.png —
+# the theme switcher shows it at a fixed thumbnail size, so it doesn't need
+# to match each installer's screen resolution). Re-run this by hand only if
+# colors.toml/icons change enough that the shipped preview.png goes stale.
+#
 # Every stock theme's preview.png (checked: hackerman, gruvbox, ...) is a
 # REAL desktop screenshot of one fixed scene — Neovim+Neo-tree w/ 2 tabs,
 # a terminal running `ls`, btop, and Nautilus Files at Home, tiled in a

@@ -1,14 +1,20 @@
 #!/bin/bash
 # ============================================================================
-# install.sh — install the animated Matrix digital-rain wallpaper into an
+# install.sh — install the Matrix theme (animated wallpaper, file-manager
+# icons, Neovim/VS Code colors, lock screen, theme-switcher preview) into an
 # existing Omarchy setup.
 #
 # What this does, in order:
 #   1. Check dependencies (python3, Pillow, ffmpeg, mpvpaper, inotify-tools).
 #   2. Create ~/.config/omarchy/themes/matrix/ if it doesn't exist yet, and
 #      install theme/{colors.toml,icons.theme,neovim.lua,vscode.json,
-#      unlock.png} into it (each file individually skipped if already
-#      present — never overwrites an existing customization).
+#      unlock.png,preview.png} into it (each file individually skipped if
+#      already present — never overwrites an existing customization).
+#      preview.png is a fixed, curated asset (a real desktop screenshot —
+#      see generate_matrix_preview.py's header for how it was made), same
+#      as every stock Omarchy theme's preview.png — NOT regenerated per
+#      install, since the theme switcher displays it at a fixed thumbnail
+#      size regardless of your actual screen resolution.
 #   2b. If an AUR helper is available (yay/paru), offer to install the
 #      `beautyline` outline icon pack and generate "BeautyLine-Matrix"
 #      (see generate_matrix_icons.py) into ~/.local/share/icons/ — covers
@@ -17,20 +23,19 @@
 #      type icon (original colors kept, black-fade overlay only). Skipped
 #      non-fatally with a note if no AUR helper is found — icons.theme
 #      already points at BeautyLine-Matrix, so icons just won't be themed
-#      until you install it yourself.
+#      until you install it yourself. Unlike preview.png, this DOES need to
+#      run per-install: it's generated from whatever beautyline SVGs are
+#      actually on disk, not shippable as a fixed asset.
 #   3. Detect your screen resolution (via hyprctl) and render 4 text-size
 #      variants (small/medium/large/xlarge) locally with matrix_rain.py.
 #      This is the slow part — expect ~15-25 minutes total, one-time.
 #   4. Install the rendered variants + poster stills into the theme's
 #      backgrounds/ folder, install matrix-wallpaper to ~/.local/bin/ and
 #      matrix-wallpaper.service to ~/.config/systemd/user/, enable it.
-#   5. Generate theme/preview.png (see generate_matrix_preview.py) from the
-#      freshly-rendered medium poster, for the Omarchy theme switcher's
-#      selector grid — regenerated every run, same as the variants
-#      themselves, so it always matches your actual resolution.
 #
-# Safe to re-run: existing colors.toml is left alone, variants are
-# overwritten (regenerated) if you run it again.
+# Safe to re-run: existing colors.toml (and the other skip-if-exists files)
+# are left alone, wallpaper variants are overwritten (regenerated) if you
+# run it again.
 #
 # See README.md for what to do manually if you'd rather not run this
 # script, and matrix_rain.py's own header comment for how to add more
@@ -43,7 +48,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 THEME_DIR="$HOME/.config/omarchy/themes/matrix"
 BACKGROUNDS_DIR="$THEME_DIR/backgrounds"
 
-echo "== Matrix digital-rain wallpaper installer =="
+echo "== Matrix theme installer =="
 echo
 
 # --- 1. Dependency check -----------------------------------------------
@@ -84,7 +89,7 @@ echo
 
 # --- 2. Theme colors + per-app integration files -------------------------
 mkdir -p "$BACKGROUNDS_DIR"
-for f in colors.toml icons.theme neovim.lua vscode.json unlock.png; do
+for f in colors.toml icons.theme neovim.lua vscode.json unlock.png preview.png; do
   if [[ -f "$THEME_DIR/$f" ]]; then
     echo "Existing $THEME_DIR/$f found — leaving it as-is."
   else
@@ -162,12 +167,6 @@ for name in "${!SIZES[@]}"; do
 done
 echo
 echo "Installed 4 variants into $BACKGROUNDS_DIR"
-echo
-
-# --- 4b. Theme-switcher preview image --------------------------------------
-python3 "$SCRIPT_DIR/generate_matrix_preview.py" \
-  --poster "$BACKGROUNDS_DIR/2-digital-rain-medium.png" \
-  --out "$THEME_DIR/preview.png"
 echo
 
 # --- 5. Install the wallpaper launcher + service --------------------------

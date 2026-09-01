@@ -1,9 +1,10 @@
 #!/bin/bash
 # Removes what install.sh added: the systemd service, the launcher script,
-# and the 4 generated background variants. Leaves theme/colors.toml alone
-# (it's your Matrix theme's actual color definition, not just wallpaper
-# scaffolding — delete ~/.config/omarchy/themes/matrix yourself if you want
-# the whole theme gone).
+# and the 4 generated background variants. Leaves the rest of the theme
+# alone — colors.toml, icons.theme, neovim.lua, vscode.json, unlock.png,
+# preview.png (delete ~/.config/omarchy/themes/matrix yourself if you want
+# the whole theme gone, or ~/.local/share/icons/BeautyLine-Matrix too if you
+# installed the icon pack).
 set -euo pipefail
 
 systemctl --user disable --now matrix-wallpaper.service 2>/dev/null || true
