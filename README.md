@@ -40,8 +40,13 @@ Two things layered together:
 - `mpvpaper`
 - `inotify-tools` (for `inotifywait`)
 - `jq` (used by the installer to detect your screen resolution)
+- A font with half-width katakana glyphs — `noto-fonts-cjk` covers it. This
+  one's easy to miss: without it, `matrix_rain.py` silently falls back to
+  plain digits/letters and the rain won't look like actual Matrix rain
+  (with a warning printed when that happens, but the installer checks for
+  this up front so you don't render 4 variants and then notice).
 
-On Omarchy/Arch: `sudo pacman -S --needed python python-pillow ffmpeg mpvpaper inotify-tools jq`
+On Omarchy/Arch: `sudo pacman -S --needed python python-pillow ffmpeg mpvpaper inotify-tools jq noto-fonts-cjk`
 
 ## Install
 

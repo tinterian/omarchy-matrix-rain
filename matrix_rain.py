@@ -243,6 +243,7 @@ import math
 import random
 import re
 import subprocess
+import sys
 from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
@@ -520,7 +521,16 @@ def generate(
 
     font = find_font(font_size)
     if not font_supports_katakana(font):
-        # Fall back to a charset every font can render, so we never show tofu boxes.
+        # Fall back to a charset every font can render, so we never show tofu
+        # boxes -- but this silently changes the whole character of the
+        # animation (plain alphanumeric instead of katakana), so say so.
+        print(
+            "WARNING: no katakana-capable font found (tried Noto Sans/Mono "
+            "CJK, DejaVu Sans Mono). Falling back to digits/letters instead "
+            "of katakana -- install the 'noto-fonts-cjk' package for the "
+            "authentic look.",
+            file=sys.stderr,
+        )
         global CHARSET
         CHARSET = DIGITS + "abcdefghijklmnopqrstuvwxyz".upper()
 

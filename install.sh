@@ -42,6 +42,19 @@ command -v inotifywait >/dev/null || missing+=(inotify-tools)
 command -v hyprctl >/dev/null || missing+=(hyprland)
 command -v jq >/dev/null || missing+=(jq)
 
+# The authentic look depends on a font with half-width katakana glyphs, not
+# just any monospace font -- matrix_rain.py silently falls back to plain
+# digits/letters otherwise (with a warning), which looks nothing like
+# Matrix rain. Check this the same way matrix_rain.py itself does, so we
+# only ask for the font package if it's actually needed (not everyone's
+# system font stack is the same).
+python3 -c "
+import sys
+sys.path.insert(0, '$SCRIPT_DIR')
+import matrix_rain as m
+sys.exit(0 if m.font_supports_katakana(m.find_font(16)) else 1)
+" 2>/dev/null || missing+=(noto-fonts-cjk)
+
 if (( ${#missing[@]} > 0 )); then
   echo "Missing dependencies: ${missing[*]}"
   read -r -p "Install with 'sudo pacman -S --needed ${missing[*]}'? [y/N] " reply
