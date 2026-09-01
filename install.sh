@@ -6,14 +6,28 @@
 # What this does, in order:
 #   1. Check dependencies (python3, Pillow, ffmpeg, mpvpaper, inotify-tools).
 #   2. Create ~/.config/omarchy/themes/matrix/ if it doesn't exist yet, and
-#      install theme/colors.toml into it (skipped if a colors.toml is
-#      already there — never overwrites an existing customization).
+#      install theme/{colors.toml,icons.theme,neovim.lua,vscode.json,
+#      unlock.png} into it (each file individually skipped if already
+#      present — never overwrites an existing customization).
+#   2b. If an AUR helper is available (yay/paru), offer to install the
+#      `beautyline` outline icon pack and generate "BeautyLine-Matrix"
+#      (see generate_matrix_icons.py) into ~/.local/share/icons/ — covers
+#      every icon a file manager can show: the default folders (full
+#      dark-green-to-black recolor), plus every other place/device/file-
+#      type icon (original colors kept, black-fade overlay only). Skipped
+#      non-fatally with a note if no AUR helper is found — icons.theme
+#      already points at BeautyLine-Matrix, so icons just won't be themed
+#      until you install it yourself.
 #   3. Detect your screen resolution (via hyprctl) and render 4 text-size
 #      variants (small/medium/large/xlarge) locally with matrix_rain.py.
 #      This is the slow part — expect ~15-25 minutes total, one-time.
 #   4. Install the rendered variants + poster stills into the theme's
 #      backgrounds/ folder, install matrix-wallpaper to ~/.local/bin/ and
 #      matrix-wallpaper.service to ~/.config/systemd/user/, enable it.
+#   5. Generate theme/preview.png (see generate_matrix_preview.py) from the
+#      freshly-rendered medium poster, for the Omarchy theme switcher's
+#      selector grid — regenerated every run, same as the variants
+#      themselves, so it always matches your actual resolution.
 #
 # Safe to re-run: existing colors.toml is left alone, variants are
 # overwritten (regenerated) if you run it again.
@@ -68,13 +82,41 @@ fi
 echo "Dependencies OK."
 echo
 
-# --- 2. Theme colors -----------------------------------------------------
+# --- 2. Theme colors + per-app integration files -------------------------
 mkdir -p "$BACKGROUNDS_DIR"
-if [[ -f "$THEME_DIR/colors.toml" ]]; then
-  echo "Existing $THEME_DIR/colors.toml found — leaving it as-is."
+for f in colors.toml icons.theme neovim.lua vscode.json unlock.png; do
+  if [[ -f "$THEME_DIR/$f" ]]; then
+    echo "Existing $THEME_DIR/$f found — leaving it as-is."
+  else
+    cp "$SCRIPT_DIR/theme/$f" "$THEME_DIR/$f"
+    echo "Installed theme/$f -> $THEME_DIR/$f"
+  fi
+done
+echo
+
+# --- 2b. Outline folder icons (optional, needs an AUR helper) ------------
+AUR_HELPER=""
+command -v yay >/dev/null && AUR_HELPER=yay
+[[ -z $AUR_HELPER ]] && command -v paru >/dev/null && AUR_HELPER=paru
+
+if [[ -d /usr/share/icons/BeautyLine ]]; then
+  python3 "$SCRIPT_DIR/generate_matrix_icons.py" --theme-name matrix
+  gtk-update-icon-cache -f -t "$HOME/.local/share/icons/BeautyLine-Matrix" >/dev/null 2>&1 || true
+  echo "Generated BeautyLine-Matrix folder icons."
+elif [[ -n $AUR_HELPER ]]; then
+  read -r -p "Install the 'beautyline' outline icon pack from the AUR with $AUR_HELPER for themed folder icons? [y/N] " reply
+  if [[ $reply =~ ^[Yy]$ ]]; then
+    "$AUR_HELPER" -S --needed beautyline
+    python3 "$SCRIPT_DIR/generate_matrix_icons.py" --theme-name matrix
+    gtk-update-icon-cache -f -t "$HOME/.local/share/icons/BeautyLine-Matrix" >/dev/null 2>&1 || true
+    echo "Generated BeautyLine-Matrix folder icons."
+  else
+    echo "Skipping folder icons — run 'python3 $SCRIPT_DIR/generate_matrix_icons.py' after installing beautyline yourself."
+  fi
 else
-  cp "$SCRIPT_DIR/theme/colors.toml" "$THEME_DIR/colors.toml"
-  echo "Installed theme/colors.toml -> $THEME_DIR/colors.toml"
+  echo "No AUR helper (yay/paru) found — skipping folder icons."
+  echo "Install 'beautyline' from the AUR yourself, then run:"
+  echo "  python3 $SCRIPT_DIR/generate_matrix_icons.py --theme-name matrix"
 fi
 echo
 
@@ -120,6 +162,12 @@ for name in "${!SIZES[@]}"; do
 done
 echo
 echo "Installed 4 variants into $BACKGROUNDS_DIR"
+echo
+
+# --- 4b. Theme-switcher preview image --------------------------------------
+python3 "$SCRIPT_DIR/generate_matrix_preview.py" \
+  --poster "$BACKGROUNDS_DIR/2-digital-rain-medium.png" \
+  --out "$THEME_DIR/preview.png"
 echo
 
 # --- 5. Install the wallpaper launcher + service --------------------------
