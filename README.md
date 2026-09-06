@@ -226,11 +226,28 @@ setup without telling the user it's untested there.
    resolve. If it doesn't, stop — this repo won't work.
 2. Clone this repo somewhere persistent (not `/tmp`), e.g. `~/Work/` or
    wherever the user keeps things like this.
-3. Run `./install.sh` from inside the clone. It is interactive exactly
-   once (a y/N prompt if a dependency needs `sudo pacman -S`) — everything
-   else is unattended. It will take 15-25 minutes; don't kill it early, and
-   don't run multiple installs concurrently (each render is CPU-bound and
-   they'll just contend with each other).
+3. Run `./install.sh` from inside the clone. It has up to two y/N prompts,
+   both of which need a real stdin/tty:
+   - A dependency-install prompt (`sudo pacman -S`) if anything from
+     Requirements is missing.
+   - A **separate** prompt in step 2b offering to install the optional
+     `beautyline` icon pack via `yay`/`paru` — this fires whenever an AUR
+     helper is present but `beautyline` isn't already installed, regardless
+     of whether the first prompt ever appeared. Confirmed on a real machine
+     that had `yay` but not `beautyline`: running the script with stdin
+     closed (as most agent shells do by default) makes `read` fail right
+     here, and `set -euo pipefail` kills the whole script silently — exit
+     code 1, no error message, right after the "existing files" block and
+     before any rendering starts. Easy to mistake for a rendering failure
+     since nothing in the output points at the real cause.
+   - If you can't attach a real tty, pipe an answer in up front —
+     `echo n | ./install.sh` skips the icon pack (safe: it's optional,
+     `icons.theme` already points at `BeautyLine-Matrix` and just won't be
+     themed until installed later) — or `echo y | ./install.sh` to accept
+     both prompts if they appear.
+   Everything else is unattended. Rendering will take 15-25 minutes; don't
+   kill it early, and don't run multiple installs concurrently (each render
+   is CPU-bound and they'll just contend with each other).
 4. After it finishes, check the theme is actually selected:
    `cat ~/.local/state/omarchy/current/theme.name` should print `matrix`.
    If not, run `omarchy-theme-set matrix`.
