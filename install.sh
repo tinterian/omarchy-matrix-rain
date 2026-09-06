@@ -76,7 +76,11 @@ sys.exit(0 if m.font_supports_katakana(m.find_font(16)) else 1)
 
 if (( ${#missing[@]} > 0 )); then
   echo "Missing dependencies: ${missing[*]}"
-  read -r -p "Install with 'sudo pacman -S --needed ${missing[*]}'? [y/N] " reply
+  # `read` fails on a closed/non-tty stdin (e.g. an unattended agent shell);
+  # without the `|| reply=n` fallback, that failure trips `set -e` and kills
+  # the script silently with no error output. Falling back to "n" instead
+  # routes into the normal decline path below.
+  read -r -p "Install with 'sudo pacman -S --needed ${missing[*]}'? [y/N] " reply || reply=n
   if [[ $reply =~ ^[Yy]$ ]]; then
     sudo pacman -S --needed "${missing[@]}"
   else
@@ -109,7 +113,8 @@ if [[ -d /usr/share/icons/BeautyLine ]]; then
   gtk-update-icon-cache -f -t "$HOME/.local/share/icons/BeautyLine-Matrix" >/dev/null 2>&1 || true
   echo "Generated BeautyLine-Matrix folder icons."
 elif [[ -n $AUR_HELPER ]]; then
-  read -r -p "Install the 'beautyline' outline icon pack from the AUR with $AUR_HELPER for themed folder icons? [y/N] " reply
+  # Same closed-stdin fallback as the dependency prompt above.
+  read -r -p "Install the 'beautyline' outline icon pack from the AUR with $AUR_HELPER for themed folder icons? [y/N] " reply || reply=n
   if [[ $reply =~ ^[Yy]$ ]]; then
     "$AUR_HELPER" -S --needed beautyline
     python3 "$SCRIPT_DIR/generate_matrix_icons.py" --theme-name matrix
