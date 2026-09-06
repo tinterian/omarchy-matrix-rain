@@ -93,7 +93,10 @@ time. It installs:
 - `~/.config/systemd/user/matrix-wallpaper.service` (enabled + started)
 - if an AUR helper (yay/paru) is available: the `beautyline` icon pack +
   a generated `BeautyLine-Matrix` variant into `~/.local/share/icons/`
-  (see "Theme components" below)
+  (see "Theme components" below). On a real terminal this asks first
+  (default: skip); with no terminal attached (e.g. run from an agent shell,
+  or `./install.sh < /dev/null`) there's no one to ask, so it installs
+  automatically instead of silently skipping.
 
 Then select the theme if it isn't active already:
 
@@ -226,25 +229,27 @@ setup without telling the user it's untested there.
    resolve. If it doesn't, stop — this repo won't work.
 2. Clone this repo somewhere persistent (not `/tmp`), e.g. `~/Work/` or
    wherever the user keeps things like this.
-3. Run `./install.sh` from inside the clone. It has up to two y/N prompts,
-   both of which need a real stdin/tty:
+3. Run `./install.sh` from inside the clone. It has up to two prompts:
    - A dependency-install prompt (`sudo pacman -S`) if anything from
-     Requirements is missing.
+     Requirements is missing. This one still needs a real stdin/tty — with
+     none attached it declines and the script exits with a clear message
+     telling you to install the listed packages yourself and re-run.
    - A **separate** prompt in step 2b offering to install the optional
      `beautyline` icon pack via `yay`/`paru` — this fires whenever an AUR
      helper is present but `beautyline` isn't already installed, regardless
-     of whether the first prompt ever appeared. Confirmed on a real machine
-     that had `yay` but not `beautyline`: running the script with stdin
-     closed (as most agent shells do by default) makes `read` fail right
-     here, and `set -euo pipefail` kills the whole script silently — exit
-     code 1, no error message, right after the "existing files" block and
-     before any rendering starts. Easy to mistake for a rendering failure
-     since nothing in the output points at the real cause.
-   - If you can't attach a real tty, pipe an answer in up front —
-     `echo n | ./install.sh` skips the icon pack (safe: it's optional,
-     `icons.theme` already points at `BeautyLine-Matrix` and just won't be
-     themed until installed later) — or `echo y | ./install.sh` to accept
-     both prompts if they appear.
+     of whether the first prompt ever appeared. Unlike the dependency
+     prompt, this one does **not** need a tty: with stdin closed (as most
+     agent shells do by default) it prints "No interactive terminal
+     detected..." and installs `beautyline` automatically rather than
+     skipping, since an agent has no one to answer "no" on its behalf and
+     the icon theme is what `icons.theme` already points at. (An earlier
+     version of this script instead defaulted to skipping in that case,
+     leaving folder icons quietly unthemed with no clear indicator —
+     if you ever see a script from before this note existed behave that
+     way, that's the bug it refers to.) If this step is genuinely skipped
+     (no AUR helper found, or a human explicitly declines on a real
+     terminal), a loud bordered banner says so and how to fix it later —
+     watch for that banner in the output.
    Everything else is unattended. Rendering will take 15-25 minutes; don't
    kill it early, and don't run multiple installs concurrently (each render
    is CPU-bound and they'll just contend with each other).

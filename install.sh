@@ -15,15 +15,20 @@
 #      as every stock Omarchy theme's preview.png — NOT regenerated per
 #      install, since the theme switcher displays it at a fixed thumbnail
 #      size regardless of your actual screen resolution.
-#   2b. If an AUR helper is available (yay/paru), offer to install the
-#      `beautyline` outline icon pack and generate "BeautyLine-Matrix"
-#      (see generate_matrix_icons.py) into ~/.local/share/icons/ — covers
-#      every icon a file manager can show: the default folders (full
+#   2b. If an AUR helper is available (yay/paru), install the `beautyline`
+#      outline icon pack and generate "BeautyLine-Matrix" (see
+#      generate_matrix_icons.py) into ~/.local/share/icons/ — covers every
+#      icon a file manager can show: the default folders (full
 #      dark-green-to-black recolor), plus every other place/device/file-
-#      type icon (original colors kept, black-fade overlay only). Skipped
-#      non-fatally with a note if no AUR helper is found — icons.theme
-#      already points at BeautyLine-Matrix, so icons just won't be themed
-#      until you install it yourself. Unlike preview.png, this DOES need to
+#      type icon (original colors kept, black-fade overlay only). Prompts
+#      for confirmation on a real terminal (default: skip); with no TTY on
+#      stdin (an unattended/agent shell) there's no one to answer that
+#      prompt, so it defaults to installing rather than silently skipping —
+#      otherwise icons.theme still points at BeautyLine-Matrix but nothing
+#      builds it, and folder icons quietly stay unthemed with only a
+#      one-line note buried before 20+ minutes of wallpaper rendering. A
+#      loud banner marks it either way if this step is skipped (no AUR
+#      helper, or a human declines). Unlike preview.png, this DOES need to
 #      run per-install: it's generated from whatever beautyline SVGs are
 #      actually on disk, not shippable as a fixed asset.
 #   3. Detect your screen resolution (via hyprctl) and render 4 text-size
@@ -108,25 +113,47 @@ AUR_HELPER=""
 command -v yay >/dev/null && AUR_HELPER=yay
 [[ -z $AUR_HELPER ]] && command -v paru >/dev/null && AUR_HELPER=paru
 
+loud_skip_notice() {
+  echo "################################################################"
+  echo "# SKIPPED: folder icons will NOT be themed (still default colors)."
+  for line in "$@"; do
+    echo "# $line"
+  done
+  echo "################################################################"
+}
+
 if [[ -d /usr/share/icons/BeautyLine ]]; then
   python3 "$SCRIPT_DIR/generate_matrix_icons.py" --theme-name matrix
   gtk-update-icon-cache -f -t "$HOME/.local/share/icons/BeautyLine-Matrix" >/dev/null 2>&1 || true
   echo "Generated BeautyLine-Matrix folder icons."
 elif [[ -n $AUR_HELPER ]]; then
-  # Same closed-stdin fallback as the dependency prompt above.
-  read -r -p "Install the 'beautyline' outline icon pack from the AUR with $AUR_HELPER for themed folder icons? [y/N] " reply || reply=n
+  # A closed/non-tty stdin (e.g. an unattended agent shell) can't answer this
+  # prompt at all -- unlike a human declining, there's no "no" being given
+  # here, just no one to ask. Falling back to skip (as the dependency prompt
+  # above does) would leave folder icons quietly unthemed, with only a
+  # one-line note buried before 20+ minutes of wallpaper rendering. Default
+  # to installing instead: it's a small, reversible AUR package this theme
+  # is designed around, so proceeding is the safer assumption when no one's
+  # there to say no.
+  if [[ -t 0 ]]; then
+    read -r -p "Install the 'beautyline' outline icon pack from the AUR with $AUR_HELPER for themed folder icons? [y/N] " reply || reply=n
+  else
+    echo "No interactive terminal detected — installing 'beautyline' from the AUR automatically for themed folder icons."
+    reply=y
+  fi
   if [[ $reply =~ ^[Yy]$ ]]; then
     "$AUR_HELPER" -S --needed beautyline
     python3 "$SCRIPT_DIR/generate_matrix_icons.py" --theme-name matrix
     gtk-update-icon-cache -f -t "$HOME/.local/share/icons/BeautyLine-Matrix" >/dev/null 2>&1 || true
     echo "Generated BeautyLine-Matrix folder icons."
   else
-    echo "Skipping folder icons — run 'python3 $SCRIPT_DIR/generate_matrix_icons.py' after installing beautyline yourself."
+    loud_skip_notice "Run this later to fix it:" "  python3 $SCRIPT_DIR/generate_matrix_icons.py"
   fi
 else
-  echo "No AUR helper (yay/paru) found — skipping folder icons."
-  echo "Install 'beautyline' from the AUR yourself, then run:"
-  echo "  python3 $SCRIPT_DIR/generate_matrix_icons.py --theme-name matrix"
+  loud_skip_notice \
+    "No AUR helper (yay/paru) found." \
+    "Install 'beautyline' from the AUR yourself, then run:" \
+    "  python3 $SCRIPT_DIR/generate_matrix_icons.py --theme-name matrix"
 fi
 echo
 
