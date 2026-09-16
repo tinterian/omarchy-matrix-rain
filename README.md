@@ -20,6 +20,8 @@ This was designed and tested **on Omarchy** (Hyprland + `mpvpaper` +
 manager or a non-Omarchy Hyprland setup — the wallpaper launcher and
 variant-switching both depend on Omarchy-specific tools.
 
+**On Windows?** See [`matrix-rain-wallpaper-windows`](https://github.com/tinterian/matrix-rain-wallpaper-windows) — a from-scratch Windows port that renders the rain live instead of pre-rendering a video loop, with a full settings GUI.
+
 ## What this actually is
 
 A theme, not just a wallpaper generator. Everything ships together and is
