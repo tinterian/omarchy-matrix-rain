@@ -1,0 +1,7 @@
+#!/bin/bash
+# Omarchy theme-set hook (installed to ~/.config/omarchy/hooks/theme-set.d/).
+# Called by omarchy-theme-set with the new theme name as $1, after the theme
+# snapshot and background symlink are in place. Restarting the service starts
+# the rain when switching TO Matrix, and stops it when switching away
+# (matrix-wallpaper exits immediately when the active theme isn't matrix).
+systemctl --user restart matrix-wallpaper.service

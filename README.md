@@ -56,6 +56,10 @@ The wallpaper itself is two things layered together:
    the same mechanism every other Omarchy theme's picture backgrounds use,
    even though `mpvpaper` only knows how to play video files. See the
    comment at the top of that script for how that mapping works.
+3. **`matrix-wallpaper.hook`** — an Omarchy `theme-set` hook that restarts
+   the service on every theme switch, so the rain starts when you pick
+   Matrix and stops when you pick any other theme (the launcher exits
+   immediately whenever Matrix isn't the active theme).
 
 ## Requirements
 
@@ -93,6 +97,8 @@ time. It installs:
   `~/.config/omarchy/themes/matrix/backgrounds/`
 - `~/.local/bin/matrix-wallpaper`
 - `~/.config/systemd/user/matrix-wallpaper.service` (enabled + started)
+- `~/.config/omarchy/hooks/theme-set.d/matrix-wallpaper.hook` (starts/stops
+  the rain when you switch themes)
 - if an AUR helper (yay/paru) is available: the `beautyline` icon pack +
   a generated `BeautyLine-Matrix` variant into `~/.local/share/icons/`
   (see "Theme components" below). On a real terminal this asks first
@@ -110,7 +116,8 @@ or pick **Matrix** from Omarchy's theme menu.
 
 ## Switching between variants
 
-Once the Matrix theme is active, the rain plays automatically. Flip
+Once the Matrix theme is active, the rain plays automatically — including
+after switching to Matrix from another theme, no restart needed. Flip
 between small/medium/large/xlarge text with Omarchy's normal background
 switcher:
 
@@ -212,7 +219,8 @@ built and how to regenerate it.
 ./uninstall.sh
 ```
 
-Removes the service, launcher, and generated wallpaper variants. Leaves the
+Removes the service, launcher, theme-set hook, and generated wallpaper
+variants. Leaves the
 rest of the theme (`colors.toml`, `icons.theme`, `neovim.lua`, `vscode.json`,
 `unlock.png`, `preview.png`) in place — delete
 `~/.config/omarchy/themes/matrix` yourself if you want the theme gone
@@ -261,7 +269,9 @@ setup without telling the user it's untested there.
 5. Verify the wallpaper is actually running:
    `systemctl --user is-active matrix-wallpaper.service` should print
    `active`, and `pgrep -af mpvpaper` should show one process with a path
-   under `~/.local/state/omarchy/current/theme/backgrounds/`.
+   under `~/.local/state/omarchy/current/theme/backgrounds/`. Also confirm
+   `~/.config/omarchy/hooks/theme-set.d/matrix-wallpaper.hook` exists —
+   without it, switching to Matrix from another theme won't start the rain.
 6. Tell the user they can flip between the 4 text sizes with
    `SUPER CTRL + SPACE` — this is the same keybinding Omarchy uses to flip
    any other theme's picture backgrounds, nothing new to learn.

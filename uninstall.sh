@@ -1,6 +1,6 @@
 #!/bin/bash
 # Removes what install.sh added: the systemd service, the launcher script,
-# and the 4 generated background variants. Leaves the rest of the theme
+# the theme-set hook, and the 4 generated background variants. Leaves the rest of the theme
 # alone — colors.toml, icons.theme, neovim.lua, vscode.json, unlock.png,
 # preview.png (delete ~/.config/omarchy/themes/matrix yourself if you want
 # the whole theme gone, or ~/.local/share/icons/BeautyLine-Matrix too if you
@@ -12,6 +12,7 @@ rm -f "$HOME/.config/systemd/user/matrix-wallpaper.service"
 systemctl --user daemon-reload
 
 rm -f "$HOME/.local/bin/matrix-wallpaper"
+rm -f "$HOME/.config/omarchy/hooks/theme-set.d/matrix-wallpaper.hook"
 
 BACKGROUNDS_DIR="$HOME/.config/omarchy/themes/matrix/backgrounds"
 rm -f "$BACKGROUNDS_DIR"/1-digital-rain-small.{mp4,png}

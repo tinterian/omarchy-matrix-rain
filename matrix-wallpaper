@@ -6,8 +6,12 @@
 # OWNER:   agent (Claude Code) 2026-08-31 (session 5)
 #
 # WHAT THIS FILE DOES:
-#   Runs only while the Matrix theme is active (checked once at start, same
-#   as before). Plays one of the three digital-rain text-size variants
+#   Runs only while the Matrix theme is active: checked at start, and again
+#   whenever the background symlink changes (exits if the theme moved on).
+#   Switching TO Matrix is handled by the theme-set hook
+#   (~/.config/omarchy/hooks/theme-set.d/matrix-wallpaper.hook), which
+#   restarts this service on every theme switch -- without it, a service
+#   that exited at login because another theme was active stays stopped. Plays one of the three digital-rain text-size variants
 #   (1-digital-rain-small.mp4 / 2-...-medium.mp4 / 3-...-large.mp4, in
 #   ~/.config/omarchy/themes/matrix/backgrounds/) with mpvpaper, chosen by
 #   reading the SAME "current background" symlink every other Omarchy theme
@@ -116,8 +120,19 @@ start_mpv "$current_video"
 # watch for rather than watching the symlink path itself (a symlink being
 # replaced out from under an inotify watch on the link itself just reads
 # as a delete, not something you can keep watching across).
+#
+# omarchy-theme-set also re-points $CURRENT_LINK when switching to ANOTHER
+# theme, so re-check the theme name on every change and shut down cleanly
+# instead of falling back to $DEFAULT_VIDEO (which the theme switch has
+# already deleted along with the rest of the old theme snapshot). The
+# theme-set hook (matrix-wallpaper.hook) restarts the service on every
+# switch anyway; this covers a theme switch that runs without the hook.
 while IFS= read -r changed_name; do
   [[ $changed_name == "$LINK_NAME" ]] || continue
+  if [[ $(cat "$HOME/.local/state/omarchy/current/theme.name" 2>/dev/null) != "matrix" ]]; then
+    stop_mpv
+    exit 0
+  fi
   new_video=$(resolve_video)
   if [[ $new_video != "$current_video" ]]; then
     current_video="$new_video"

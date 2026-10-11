@@ -36,7 +36,9 @@
 #      This is the slow part — expect ~15-25 minutes total, one-time.
 #   4. Install the rendered variants + poster stills into the theme's
 #      backgrounds/ folder, install matrix-wallpaper to ~/.local/bin/ and
-#      matrix-wallpaper.service to ~/.config/systemd/user/, enable it.
+#      matrix-wallpaper.service to ~/.config/systemd/user/, enable it, and
+#      install matrix-wallpaper.hook into ~/.config/omarchy/hooks/theme-
+#      set.d/ so switching themes starts/stops the rain.
 #
 # Safe to re-run: existing colors.toml (and the other skip-if-exists files)
 # are left alone, wallpaper variants are overwritten (regenerated) if you
@@ -206,6 +208,11 @@ mkdir -p "$HOME/.local/bin" "$HOME/.config/systemd/user"
 cp "$SCRIPT_DIR/matrix-wallpaper" "$HOME/.local/bin/matrix-wallpaper"
 chmod +x "$HOME/.local/bin/matrix-wallpaper"
 cp "$SCRIPT_DIR/matrix-wallpaper.service" "$HOME/.config/systemd/user/matrix-wallpaper.service"
+# Theme-set hook: restarts the service on every theme switch, so the rain
+# starts when Matrix is selected (and stops when another theme is).
+mkdir -p "$HOME/.config/omarchy/hooks/theme-set.d"
+cp "$SCRIPT_DIR/matrix-wallpaper.hook" "$HOME/.config/omarchy/hooks/theme-set.d/matrix-wallpaper.hook"
+chmod +x "$HOME/.config/omarchy/hooks/theme-set.d/matrix-wallpaper.hook"
 
 systemctl --user daemon-reload
 systemctl --user enable --now matrix-wallpaper.service
